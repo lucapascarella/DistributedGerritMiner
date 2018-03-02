@@ -1,0 +1,17 @@
+# Properties for program: Main interface
+# Version: 0.1
+# Created on: 2017/12/24 09:58:11
+
+database.user = luca
+jms.port = 61616
+jms.queue = miner
+local.port = 1234
+prog.workdir = /Users/luca/TUProjects/workspace/ActiveMQTest
+database.name = test
+database.host = benevento.pascarella.cloud
+database.port = 3306
+config.version = 0.1
+prog.name = Main interface
+database.password = master
+prog.ver = 0.1
+jms.host = benevento.pascarella.cloud
