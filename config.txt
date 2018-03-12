@@ -15,5 +15,5 @@ prog.name = Main interface
 database.password = gerritMiner!0
 prog.ver = 0.1
 jms.host = delft.pascarella.cloud
-gerrit.start = 500000
-gerrit.stop = 500015
+gerrit.start = 1
+gerrit.stop = 100000

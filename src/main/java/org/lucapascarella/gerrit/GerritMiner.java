@@ -90,6 +90,7 @@ public class GerritMiner {
 
     private MinedResults work(long gerritId) throws RestApiException, SQLException {
         MinedResults minedResult = new MinedResults();
+        minedResult.setGerritId(gerritId);
 
         // Skip current Gerrit ID if this entry already exists
         ResultSet resultSet = mysql.selectQuery("reviews", "ID", "gerritId", MySQL.SELECT_EQUAL, String.valueOf(gerritId));
@@ -102,6 +103,7 @@ public class GerritMiner {
                 for (ChangeInfo ci : changeList) {
                     // Add a new review entry into DB
                     long reviewID = addReview(ci, gerritId);
+                    minedResult.setReviewID(reviewID);
 
                     // Add a owner by email(s)
                     addOwner(ci, reviewID);
@@ -121,12 +123,12 @@ public class GerritMiner {
                      * Otherwise find a better workaround
                      */
                     if (revisionsNumber == revisions.size()) {
-                        System.out.println("Same size");
+
                         // Change newChange = getCommentsPerReview(changes, gerritId, changeList, ci);
                         for (Map.Entry<String, RevisionInfo> revision : revisions.entrySet()) {
                             String revisionId = revision.getKey();
                             RevisionInfo ri = revision.getValue();
-                            System.out.println("Revision: " + ri._number);
+                            System.out.println("Gerrit ID: " + gerritId + ". Revision: " + ri._number);
                             // Add revision
                             MyRevision myRevision = new MyRevision(mysql, reviewID, revisionId, ri._number, ri.created, ri.commit.message, ri.commit.subject, ri.commit.parents.get(0).commit);
                             long revisionsID = myRevision.store(true);
@@ -135,6 +137,7 @@ public class GerritMiner {
                         }
                     } else {
                         // TODO find an improvement for this problem
+                        System.out.println("Workaround for Gerrit ID: " + gerritId + ". Revision: " + revisionsNumber);
                         for (int i = revisionsNumber; i > 0; i--) {
                             // Add revision
                             MyRevision myRevision = new MyRevision(mysql, reviewID, "", i, ri2.created, ri2.commit.message, ri2.commit.subject, ri2.commit.parents.get(0).commit);
@@ -161,9 +164,12 @@ public class GerritMiner {
                 }
             } else {
                 System.out.println("Gerrit ID: " + gerritId + " empty!");
+                minedResult.setReviewID(-1);
             }
         } else {
-            System.out.println("Gerrit ID: " + gerritId + " already present! ID: " + resultSet.getInt("ID"));
+            long id = resultSet.getInt("ID");
+            System.out.println("Gerrit ID: " + gerritId + " already present! ID: " + id);
+            minedResult.setReviewID(id);
         }
         return minedResult;
     }
@@ -312,42 +318,6 @@ public class GerritMiner {
         return -1;
     }
 
-    // private Change getCommentsPerReview(Changes changes, int id, List<ChangeInfo> reviews, ChangeInfo c) throws SQLException, RestApiException {
-    // System.out.println("#" + id + " changeID: " + c.changeId + "; submitted at: " + c.submitted + " by " + getAuthor(c));
-    //
-    // // Getting the revisions
-    // Map<String, RevisionInfo> m = c.revisions;
-    //
-    // HashMap<String, Integer> totComments = new HashMap<String, Integer>();
-    // HashMap<String, String> bodyComments = new HashMap<String, String>();
-    // // HashMap<String, Set<String>> filesMap2 = new HashMap<String, Set<String>>();
-    //
-    // for (Map.Entry<String, RevisionInfo> entry : m.entrySet()) {
-    // // Getting the list of the files per revision
-    // Map<String, FileInfo> filesMap = entry.getValue().files;
-    //
-    // if (filesMap == null) {
-    // continue;
-    // }
-    // Set<String> files = filesMap.keySet();
-    // // filesMap2.put(key, value)
-    //
-    // String revisionId = entry.getKey();
-    // System.out.println("ChangeID: " + c.changeId + ", revisionID: " + revisionId + ", files: " + files.toString());
-    //
-    // Map<String, List<CommentInfo>> comments = getCommentPerRevision(changes, c, revisionId);
-    //
-    // // Updating the total number of comments
-    // HashMap<String, Integer> currentNumComments = getNumberOfComments(files, comments);
-    // totComments = updateComments(totComments, currentNumComments);
-    //
-    // // Updating the total body of the comments
-    // HashMap<String, String> currentBodyComments = getCommentsBody(files, comments);
-    // bodyComments = updateBodyComments(bodyComments, currentBodyComments);
-    // }
-    // return new Change(totComments, bodyComments);
-    // }
-
     private List<ReviewerInfo> getReviewers(ChangeInfo ci) throws RestApiException {
         List<ReviewerInfo> res = new ArrayList<ReviewerInfo>();
         int numTries = 1;
@@ -450,52 +420,6 @@ public class GerritMiner {
         return commentsBody;
     }
 
-    // private HashMap<String, Integer> updateComments(HashMap<String, Integer> totComments, HashMap<String, Integer> currentComments) {
-    // for (String file : currentComments.keySet()) {
-    // totComments.put(file, totComments.getOrDefault(file, 0) + currentComments.getOrDefault(file, 0));
-    // }
-    // return totComments;
-    // }
-    //
-    // private HashMap<String, String> updateBodyComments(HashMap<String, String> bodyComments, HashMap<String, String> currentBodyComments) {
-    // for (String file : currentBodyComments.keySet()) {
-    // bodyComments.put(file, bodyComments.getOrDefault(file, "") + "\n###NEWREVISION###\n" + currentBodyComments.getOrDefault(file, ""));
-    // }
-    // return bodyComments;
-    // }
-
-    // public Integer insertReview(Review r) throws SQLException {
-    // String query = "INSERT INTO " + databaseReviews + " (gerritid, changeid, author, created, submitted, updated, file, project, numfiles, numreviewers, numcomments) VALUES('" + r.getGerritId() + "',
-    // '" + r.changeId
-    // + "', '" + r.author + "', '" + r.createdAt + "', '" + r.submittedAt + "', '" + r.updatedAt + "', '" + r.filename + "', '" + r.project + "', '" + r.numFiles + "', '" + r.numReviewers + "', "
-    // + r.numComments + ")";
-    // stmt.executeUpdate(query, Statement.RETURN_GENERATED_KEYS);
-    // ResultSet generatedKeys = stmt.getGeneratedKeys();
-    // if (generatedKeys.next()) {
-    // return generatedKeys.getInt(1);
-    // } else {
-    // throw new SQLException("Creating review failed: no ID obtained.");
-    // }
-    // }
-
-    // public void insertComments(String changeId, Integer id, String bodyComments) throws SQLException {
-    // String formattedComment = formatString(bodyComments);
-    // String query = "INSERT INTO " + databaseComments + " (id, changeid, body) VALUES('" + id + "', '" + changeId + "', '" + formattedComment + "')";
-    // stmt.executeUpdate(query);
-    // }
-    //
-    // public void insertReviewer(String changeId, String reviewer, String email) throws SQLException {
-    // String query = "INSERT INTO " + databaseReviewers + " (changeid, reviewer, email) VALUES('" + changeId + "', '" + reviewer + "', '" + email + "')";
-    // stmt.executeUpdate(query);
-    //
-    // }
-    //
-    // public void insertStatus(String gerritId, String status) throws SQLException {
-    // String query = "INSERT INTO " + databaseStatus + " (id, status) VALUES('" + gerritId + "', '" + status + "')";
-    // stmt.executeUpdate(query);
-    //
-    // }
-
     public HashMap<String, Integer> getNumberOfComments(Set<String> files, Map<String, List<CommentInfo>> comments) {
         HashMap<String, Integer> totComments = new HashMap<String, Integer>();
         for (String file : files) {
@@ -526,95 +450,5 @@ public class GerritMiner {
             return toFormat.toString().replaceAll("\\'", "").replaceAll("\"", "").replaceAll("%", "").replace("\\", "");
         return "0";
     }
-
-    // private void store(ChangeInfo c, Change newChange, List<ReviewerInfo> revs, int id) throws SQLException {
-    // HashMap<String, Integer> fileIds = new HashMap<String, Integer>();
-    //
-    // if (isAlreadyPresent(newChange, c)) {
-    // System.out.println(c.changeId + " already present! ");
-    // return;
-    // }
-    // for (String file : newChange.getTotComments().keySet()) {
-    // String submitted = (c.submitted != null) ? c.submitted.toString() : "1000-01-01 00:00:0.0";
-    // Review r = new Review(Integer.toString(id), c.changeId, getAuthor(c), c.created.toString(), submitted, c.updated.toString(), formatString(file), formatString(c.project),
-    // newChange.getTotComments().get(file),
-    // revs.size(), newChange.getTotComments().size());
-    // fileIds.put(file, insertReview(r));
-    //
-    // insertComments(c.changeId, fileIds.get(file), newChange.getBodyComments().get(file));
-    // }
-    //
-    // for (ReviewerInfo ri : revs) {
-    // insertReviewer(c.changeId, formatString(ri.name), formatString(ri.email));
-    // }
-    // insertStatus(Integer.toString(id), c.status == null ? "UNKNOWN" : c.status.toString());
-    // }
-
-    // private boolean isAlreadyPresent(Change newChange, ChangeInfo c) throws SQLException {
-    // for (String file : newChange.getTotComments().keySet()) {
-    // PreparedStatement psReview = conn.prepareStatement("SELECT * FROM reviews where changeid = ? and file = ?");
-    // psReview.setString(1, c.changeId);
-    // psReview.setString(2, file);
-    // ResultSet rs = psReview.executeQuery();
-    //
-    // if (rs.next())
-    // return true;
-    // }
-    // return false;
-    //
-    // }
-
-    // private boolean isAlreadyPresent(int id) throws SQLException {
-    // PreparedStatement psReview = conn.prepareStatement("SELECT * FROM reviews where gerritid = ?");
-    // psReview.setInt(1, id);
-    // ResultSet rs = psReview.executeQuery();
-    //
-    // if (rs.next())
-    // return true;
-    //
-    // return false;
-    // }
-
-    // NEW CHANGES
-
-    // private int insertReviewLuca(Integer gerritId, String changeId, Timestamp created, Timestamp submitted, Timestamp updated, String project, String branch, String status) {
-    // // "ID", "gerritId", "changeId", "created", "submitted", "updated", "project", "branch", "status"
-    // String[] params = { "gerritId", "changeId", "created", "submitted", "updated", "project", "branch", "status" };
-    // String[] values = { String.valueOf(gerritId), changeId, formatString(created), formatString(submitted), formatString(updated), formatString(project), formatString(branch), formatString(status) };
-    // String key = mysql.insertValuesReturnID("reviews", params, values);
-    // return Integer.parseInt(key);
-    // }
-
-    // private int insertDeveloperLuca(Integer reviewsID, String role, String name, String username, String email, String email2) {
-    // // "ID", "reviewsID", "role", "name", "username", "email", "email2"
-    // String[] params = { "reviewsID", "role", "name", "username", "email", "email2" };
-    // String[] values = { String.valueOf(reviewsID), formatString(role), formatString(name), formatString(username), formatString(email), formatString(email2) };
-    // String key = mysql.insertValuesReturnID("developers", params, values);
-    // return Integer.parseInt(key);
-    // }
-
-    // private int insertRevisionLuca(Integer reviewsID, String revisionId, String commitMessage, String commitSubject, String commitHash) {
-    // // "ID", "reviewsID", "revisionId", "commitMessage", "commitSubject", "commitHash"
-    // String[] params = { "reviewsID", "revisionId", "commitMessage", "commitSubject", "commitHash" };
-    // String[] values = { String.valueOf(reviewsID), revisionId, formatString(commitMessage), formatString(commitSubject), formatString(commitHash) };
-    // String key = mysql.insertValuesReturnID("revisions", params, values);
-    // return Integer.parseInt(key);
-    // }
-
-    // private int insertFileLuca(Integer revisionsID, String file, Integer linesInserted, Integer linesDeleted) {
-    // // "ID", "revisionsID", "file", "linesInserted", "linesDeleted"
-    // String[] params = { "revisionsID", "file", "linesInserted", "linesDeleted" };
-    // String[] values = { String.valueOf(revisionsID), file, formatString(linesInserted), formatString(linesDeleted) };
-    // String key = mysql.insertValuesReturnID("files", params, values);
-    // return Integer.parseInt(key);
-    // }
-
-    // private int insertCommentLuca(Integer filesID, Integer line, String message) {
-    // // "ID", "revisionsID", "file", "line", "message"
-    // String[] params = { "filesID", "line", "message" };
-    // String[] values = { String.valueOf(filesID), formatString(line), formatString(message) };
-    // String key = mysql.insertValuesReturnID("comments", params, values);
-    // return Integer.parseInt(key);
-    // }
 
 }

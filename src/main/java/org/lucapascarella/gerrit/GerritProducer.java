@@ -83,10 +83,12 @@ public class GerritProducer extends ProducerImpl {
                 MineRequest requestedObject = (MineRequest) getValue(correlationId);
                 MineRequest receivedObject = (MineRequest) ((ObjectMessage) message).getObject();
                 // What happened
-                System.out.println("Requested Gerrit range: " + requestedObject.getStartGerritID() + "-" + requestedObject.getStopGerritID() + ". Respose: " + receivedObject.getOperation());
-                // Store remote mined object into DB
                 MinedResults minedResults = receivedObject.getMinedResults();
-                storeRemote(minedResults);
+                if (minedResults != null)
+                    System.out.println("Requested Gerrit range: " + requestedObject.getStartGerritID() + "-" + requestedObject.getStopGerritID() + ". Respose: " + receivedObject.getOperation() + " Gerrit ID: "
+                            + minedResults.getGerritId() + ". Review ID: " + minedResults.getReviewID());
+                else
+                    System.out.println("Requested Gerrit range: " + requestedObject.getStartGerritID() + "-" + requestedObject.getStopGerritID() + ". Respose: " + receivedObject.getOperation());
             } else {
 
             }
@@ -94,10 +96,6 @@ public class GerritProducer extends ProducerImpl {
         } catch (JMSException e) {
             e.printStackTrace();
         }
-    }
-
-    private void storeRemote(MinedResults minedResults) {
-
     }
 
 }

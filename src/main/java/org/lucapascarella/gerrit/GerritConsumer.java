@@ -1,5 +1,7 @@
 package org.lucapascarella.gerrit;
 
+import java.util.List;
+
 import javax.jms.JMSException;
 import javax.jms.Message;
 import javax.jms.ObjectMessage;
@@ -43,11 +45,17 @@ public class GerritConsumer extends ConsumerImpl {
                 MySQL mysql = new MySQL(mr.getMysqlHost(), mr.getMysqlPort(), mr.getMysqlName(), mr.getMysqlUser(), mr.getMysqlPassword());
                 gerritMiner = new GerritMiner(mysql, mr.getGerritURL());
                 gerritMiner.start();
-                System.out.println("Mine Gerrit ID from: " + mr.getStartGerritID() + " to " + mr.getStopGerritID());
-                gerritMiner.mine(mr.getStartGerritID(), mr.getStopGerritID());
-                mr.setOperation(true);
-                // Return mined objects
-                mr.setMinedResults(new MinedResults());
+                System.out.println("Request: mine Gerrit ID from " + mr.getStartGerritID() + " to " + mr.getStopGerritID());
+                List<MinedResults> minedResults = gerritMiner.mine(mr.getStartGerritID(), mr.getStopGerritID());
+                if (minedResults != null && minedResults.size() > 0) {
+                    // Return mined objects
+                    mr.setMinedResults(minedResults.get(0));
+                    mr.setOperation(true);
+                } else {
+                    // Return null
+                    mr.setMinedResults(null);
+                    mr.setOperation(false);
+                }
                 response = (ObjectMessage) session.createObjectMessage();
                 ((ObjectMessage) response).setObject(mr);
             }

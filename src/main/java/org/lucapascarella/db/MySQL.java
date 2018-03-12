@@ -20,10 +20,10 @@ public class MySQL {
 
     public MySQL(String host, String port, String dbName, String username, String password) {
         try {
-            String myURL = "jdbc:mysql://" + host + ":" + port + "/" + dbName;
+            String myURL = "jdbc:mysql://" + host + ":" + port + "/" + dbName + "?autoReconnect=true&useSSL=false";
             connection = DriverManager.getConnection(myURL, username, password);
             stmt = connection.createStatement();
-            System.out.println("Database connected!");
+            //System.out.println("Database connected!");
         } catch (SQLException e) {
             throw new IllegalStateException("Cannot connect the database!", e);
         }
