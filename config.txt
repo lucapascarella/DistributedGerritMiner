@@ -1,17 +1,19 @@
 # Properties for program: Main interface
 # Version: 0.1
-# Created on: 2017/12/24 09:58:11
+# Created on: 2018/03/09 18:19:10
 
 database.user = luca
 jms.port = 61616
 jms.queue = miner
-local.port = 1234
 prog.workdir = /Users/luca/TUProjects/workspace/ActiveMQTest
-database.name = test
-database.host = benevento.pascarella.cloud
+database.name = gerritMiner
+database.host = delft.pascarella.cloud
 database.port = 3306
 config.version = 0.1
+gerrit.url = https://review.openstack.org
 prog.name = Main interface
-database.password = master
+database.password = gerritMiner!0
 prog.ver = 0.1
-jms.host = benevento.pascarella.cloud
+jms.host = delft.pascarella.cloud
+gerrit.start = 500000
+gerrit.stop = 500014

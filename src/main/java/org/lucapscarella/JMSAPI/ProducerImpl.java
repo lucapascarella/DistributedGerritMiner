@@ -8,23 +8,23 @@ import java.util.concurrent.TimeUnit;
 
 import javax.jms.Connection;
 import javax.jms.DeliveryMode;
-import javax.jms.Destination;
 import javax.jms.JMSException;
 import javax.jms.MessageConsumer;
 import javax.jms.MessageListener;
 import javax.jms.MessageProducer;
 import javax.jms.ObjectMessage;
+import javax.jms.Queue;
 import javax.jms.Session;
 import javax.jms.TextMessage;
-
 import org.apache.activemq.ActiveMQConnectionFactory;
+
 
 public abstract class ProducerImpl implements Producer, MessageListener {
 
     private Random random;
     private Session session;
-    private Destination destionation, tempDest;
-    private Connection connecition;
+    private Queue queue, tempQueue;
+    private Connection connection;
     private MessageProducer producer;
     private Map<String, Serializable> map;
 
@@ -35,20 +35,20 @@ public abstract class ProducerImpl implements Producer, MessageListener {
             ActiveMQConnectionFactory connectionFactory = new ActiveMQConnectionFactory(url);
             // Set this option true if you want to receive serialized Java object
             connectionFactory.setTrustAllPackages(true);
-            connecition = connectionFactory.createConnection();
-            connecition.start();
-            session = connecition.createSession(false, Session.AUTO_ACKNOWLEDGE);
-            destionation = session.createQueue(jmsQueue);
+            connection = connectionFactory.createConnection();
+            connection.start();
+            session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
+            queue = session.createQueue(jmsQueue);
 
             // Setup a message producer to send message to the queue the server is consuming from
-            producer = session.createProducer(destionation);
+            producer = session.createProducer(queue);
             producer.setDeliveryMode(DeliveryMode.NON_PERSISTENT);
 
             // Create a temporary queue that this client will listen for responses on then create a consumer
             // that consumes message from this temporary queue...for a real application a client should reuse
             // the same temp queue for each message to the server...one temp queue per client
-            tempDest = session.createTemporaryQueue();
-            MessageConsumer responseConsumer = session.createConsumer(tempDest);
+            tempQueue = session.createTemporaryQueue();
+            MessageConsumer responseConsumer = session.createConsumer(tempQueue);
 
             // Create hash map to store client requests
             map = new HashMap<String, Serializable>();
@@ -60,15 +60,32 @@ public abstract class ProducerImpl implements Producer, MessageListener {
         }
     }
 
-    private String createRandomString() {
-        long randomLong = random.nextLong();
-        return Long.toHexString(randomLong);
-    }
+    // /**
+    // * This method return the number of pending messages in the queue
+    // *
+    // * @return number of messages in the queue
+    // */
+    // @SuppressWarnings("unchecked")
+    // public int getPendingElements() {
+    // int pending = 0;
+    // Enumeration<QueueBrowser> enu;
+    // try {
+    // enu = browser.getEnumeration();
+    // while (enu.hasMoreElements()) {
+    // enu.nextElement();
+    // pending++;
+    // }
+    // } catch (JMSException e) {
+    // e.printStackTrace();
+    // }
+    // return pending;
+    // }
 
     /**
      * This method produce and send a text message to worker
      * 
      * @param text
+     * @return true is success
      */
     public boolean sendTextMessage(String text) {
         TextMessage txtMessage;
@@ -77,7 +94,7 @@ public abstract class ProducerImpl implements Producer, MessageListener {
             txtMessage = session.createTextMessage();
             txtMessage.setText(text);
             // Set the reply to field to the temp queue you created above, this is the queue the server will respond to
-            txtMessage.setJMSReplyTo(tempDest);
+            txtMessage.setJMSReplyTo(tempQueue);
             // Set a correlation ID so when you get a response you know which sent message the response is for
             // If there is never more than one outstanding message to the server then the
             // same correlation ID can be used for all the messages...if there is more than one outstanding
@@ -93,6 +110,12 @@ public abstract class ProducerImpl implements Producer, MessageListener {
         return false;
     }
 
+    /**
+     * This method produce and send an object message to worker
+     * 
+     * @param text
+     * @return true is success
+     */
     public boolean sendObject(Serializable obj) {
         ObjectMessage objMessage;
         try {
@@ -100,7 +123,7 @@ public abstract class ProducerImpl implements Producer, MessageListener {
             objMessage = session.createObjectMessage();
             objMessage.setObject(obj);
             // Set the reply to field to the temp queue you created above, this is the queue the server will respond to
-            objMessage.setJMSReplyTo(tempDest);
+            objMessage.setJMSReplyTo(tempQueue);
             // Set a correlation ID so when you get a response you know which sent message the response is for
             // If there is never more than one outstanding message to the server then the
             // same correlation ID can be used for all the messages...if there is more than one outstanding
@@ -116,6 +139,11 @@ public abstract class ProducerImpl implements Producer, MessageListener {
         return false;
     }
 
+    private String createRandomString() {
+        long randomLong = random.nextLong();
+        return Long.toHexString(randomLong);
+    }
+
     private synchronized String addKeyToMap(String key, Serializable obj) {
         while (map.get(key) != null) {
             long l = Long.parseLong(key, 16);
@@ -126,10 +154,14 @@ public abstract class ProducerImpl implements Producer, MessageListener {
         return key;
     }
 
-    private synchronized boolean isMapEmpty() {
+    protected synchronized boolean isMapEmpty() {
         return map.isEmpty();
     }
 
+    protected synchronized int mapSize() {
+        return map.size();
+    }
+    
     protected synchronized Serializable getValue(String key) {
         return map.get(key);
     }
@@ -139,14 +171,14 @@ public abstract class ProducerImpl implements Producer, MessageListener {
     }
 
     public void close() throws JMSException {
-        connecition.close();
+        connection.close();
     }
 
     public void waitTermination() {
         try {
             while (!isMapEmpty())
                 TimeUnit.SECONDS.sleep(1);
-            connecition.close();
+            connection.close();
         } catch (JMSException e) {
             e.printStackTrace();
         } catch (InterruptedException e) {

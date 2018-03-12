@@ -20,19 +20,21 @@ public final class PropDef {
     // public static String[] defaultClientList = { "config.clients", "clients.txt" };
 
     // Database values
-    public static String defaultDBHost[] = { "database.host", "delft.pascarella.cloud" };
+    public static String defaultDBHost[] = { "database.host", "benevento.pascarella.cloud" };
     public static String defaultDBPort[] = { "database.port", "3306" };
     public static String defaultDBUser[] = { "database.user", "luca" };
     public static String defaultDBPassword[] = { "database.password", "master" };
-    public static String defaultDBName[] = { "database.name", "gerrit_qt" };
+    public static String defaultDBName[] = { "database.name", "gerritMiner" };
 
     // JMS values
-    public static String defaultJMSHost[] = { "jms.host", "benevento.pascarella.cloud" };
+    public static String defaultJMSHost[] = { "jms.host", "delft.pascarella.cloud" };
     public static String defaultJMSPort[] = { "jms.port", "61616" };
     public static String defaultJMSQueue[] = { "jms.queue", "miner" };
 
     // Gerrit settings
     public static String defaultGerritURL[] = { "gerrit.url", "https://codereview.qt-project.org" };
+    public static String defaultGerritStartID[] = { "gerrit.start", "1" };
+    public static String defaultGerritStopID[] = { "gerrit.stop", "1000" };
 
     public static char getFileSeparator() {
         String rtn = System.getProperty("file.separator");
