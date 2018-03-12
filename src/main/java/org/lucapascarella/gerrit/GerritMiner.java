@@ -64,7 +64,7 @@ public class GerritMiner {
     public MinedResults mine(int gerritID) {
         MinedResults minedResults = null;
         try {
-            minedResults = work(changes, gerritID);
+            minedResults = work(gerritID);
         } catch (RestApiException e) {
             e.printStackTrace();
         } catch (SQLException e) {
@@ -77,7 +77,7 @@ public class GerritMiner {
         List<MinedResults> list = new ArrayList<MinedResults>();
         while (startGerritID <= stopGerritID) {
             try {
-                list.add(work(changes, startGerritID));
+                list.add(work(startGerritID));
             } catch (RestApiException e) {
                 e.printStackTrace();
             } catch (SQLException e) {
@@ -88,7 +88,7 @@ public class GerritMiner {
         return list;
     }
 
-    private MinedResults work(Changes changes, long gerritId) throws RestApiException, SQLException {
+    private MinedResults work(long gerritId) throws RestApiException, SQLException {
         MinedResults minedResult = new MinedResults();
 
         // Skip current Gerrit ID if this entry already exists
@@ -96,54 +96,30 @@ public class GerritMiner {
         // ResultSetMetaData md = resultSet.getMetaData();
 
         if (resultSet != null && !resultSet.next()) {
-            // Query Gerrit API for current the Gerrit ID
-            List<ChangeInfo> changeList = getChangeList(changes, gerritId);
+            // Query Gerrit API for getting the current Gerrit ID
+            List<ChangeInfo> changeList = getChangeList(gerritId);
             if (!changeList.isEmpty()) {
                 for (ChangeInfo ci : changeList) {
-                    // Add a new review entry
-                    String status = ci.status == null ? "" : ci.status.toString();
-                    MyReview myReview = new MyReview(mysql, gerritId, ci.changeId, ci.created, ci.submitted, ci.updated, ci.project, ci.branch, status);
-                    long reviewID = myReview.store(true);
-                    // System.out.println("Gerrit ID: " + gerritId + ". ChangeID: " + ci.changeId + ". Created: " + ci.created + " by " + getAuthor(ci));
-                    // int reviewID = insertReviewLuca(gerritId, ci.changeId, ci.created, ci.submitted, ci.updated, ci.project, ci.branch, ci.status.toString());
+                    // Add a new review entry into DB
+                    long reviewID = addReview(ci, gerritId);
 
-                    // Add owner by email(s)
-                    List<String> emails = ci.owner.secondaryEmails;
-                    if (emails != null) {
-                        for (String email : emails)
-                            new MyDeveloper(mysql, reviewID, "owner", ci.owner.name, ci.owner.username, ci.owner.email, email).store(true);
-                    } else {
-                        new MyDeveloper(mysql, reviewID, "owner", ci.owner.name, ci.owner.username, ci.owner.email, "").store(true);
-                    }
-                    // Add reviewers
-                    List<ReviewerInfo> revs = getReviewers(changes, ci);
-                    for (ReviewerInfo ri : revs) {
-                        emails = ri.secondaryEmails;
-                        if (emails != null) {
-                            for (String email : emails) {
-                                new MyDeveloper(mysql, reviewID, "reviewer", ri.name, ri.username, ri.email, email).store(true);
-                            }
-                        } else {
-                            new MyDeveloper(mysql, reviewID, "reviewer", ri.name, ri.username, ri.email, "").store(true);
-                        }
-                    }
+                    // Add a owner by email(s)
+                    addOwner(ci, reviewID);
+
+                    // Add reviewers by email(s)
+                    addReviewers(ci, reviewID);
 
                     // Add messages
-                    Collection<ChangeMessageInfo> messages = ci.messages;
-                    if (messages != null) {
-                        for (ChangeMessageInfo message : messages) {
-                            if (message.author != null) {
-                                long developerID = getDeveloperID(reviewID, message.author.name, message.author.email);
-                                MyMessage myMessage = new MyMessage(mysql, reviewID, developerID, message.message, message.date);
-                                myMessage.store(true);
-                            }
-                        }
-                    }
+                    addMessages(ci, reviewID);
 
                     // Workaround for revisions
                     Map<String, RevisionInfo> revisions = ci.revisions;
                     RevisionInfo ri2 = revisions.get(ci.currentRevision);
                     int revisionsNumber = ri2._number;
+                    /*
+                     * I suspect a problem with 2.7 Gerrit API. In this case I can retrieve only last patch set. When we have only 1 patch set or the number of retrieved revisions is correct used the following method
+                     * Otherwise find a better workaround
+                     */
                     if (revisionsNumber == revisions.size()) {
                         System.out.println("Same size");
                         // Change newChange = getCommentsPerReview(changes, gerritId, changeList, ci);
@@ -152,45 +128,20 @@ public class GerritMiner {
                             RevisionInfo ri = revision.getValue();
                             System.out.println("Revision: " + ri._number);
                             // Add revision
-                            MyRevision myRevision = new MyRevision(mysql, reviewID, revisionId, ri._number, ri.commit.message, ri.commit.subject, ri.commit.parents.get(0).commit);
+                            MyRevision myRevision = new MyRevision(mysql, reviewID, revisionId, ri._number, ri.created, ri.commit.message, ri.commit.subject, ri.commit.parents.get(0).commit);
                             long revisionsID = myRevision.store(true);
-                            // System.out.println("ChangeID: " + ci.changeId + ". RevisionID: " + revisionId + ". " + ri.commit.message);
-                            // int revisionsID = insertRevisionLuca(reviewID, revisionId, ri.commit.message, ri.commit.subject, ri.commit.parents.get(0).commit);
-
-                            // Getting the list of files per revision
-                            Map<String, FileInfo> filesMap = ri.files;
-                            Map<String, List<CommentInfo>> comments = getCommentPerRevision(changes, ci, revisionId);
-                            if (filesMap != null) {
-                                Set<String> files = filesMap.keySet();
-                                for (String file : files) {
-                                    // Add file
-                                    FileInfo fi = filesMap.get(file);
-                                    MyFile myFile = new MyFile(mysql, revisionsID, file, fi.linesInserted, fi.linesDeleted);
-                                    long fileID = myFile.sotre(true);
-                                    // System.out.println("ChangeID: " + ci.changeId + ", revisionID: " + revisionId + ", file: " + file + ", " + fi.linesInserted + ", " + fi.linesDeleted);
-                                    // int fileID = insertFileLuca(revisionsID, file, fi.linesInserted, fi.linesDeleted);
-
-                                    // Get comments per file
-                                    List<CommentInfo> ciList = comments.get(file);
-                                    if (ciList != null)
-                                        for (CommentInfo commentInfo : ciList) {
-                                            Long developerID = getDeveloperID(reviewID, commentInfo.author.name, commentInfo.author.email);
-                                            new MyComment(mysql, fileID, developerID, commentInfo.line, commentInfo.message, commentInfo.updated).store(true);
-                                            // System.out.println("File: " + file + ", Line: " + commentInfo.line + ", Comment: " + commentInfo.message);
-                                            // transId = insertCommentLuca(fileID, commentInfo.line, commentInfo.message);
-                                        }
-                                }
-                            }
+                            // Add files
+                            addFiles(ci, reviewID, revisionsID, revisionId, ri.files);
                         }
                     } else {
-
+                        // TODO find an improvement for this problem
                         for (int i = revisionsNumber; i > 0; i--) {
                             // Add revision
-                            MyRevision myRevision = new MyRevision(mysql, reviewID, "", i, ri2.commit.message, ri2.commit.subject, ri2.commit.parents.get(0).commit);
+                            MyRevision myRevision = new MyRevision(mysql, reviewID, "", i, ri2.created, ri2.commit.message, ri2.commit.subject, ri2.commit.parents.get(0).commit);
                             long revisionsID = myRevision.store(true);
                             // Get Files and Comments
-                            Map<String, List<CommentInfo>> comments = getCommentPerRevision(changes, ci, String.valueOf(i));
                             Map<String, FileInfo> filesMap = ri2.files; // getFilesPerRevision(changes, ci, String.valueOf(i));
+                            Map<String, List<CommentInfo>> comments = getCommentPerRevision(changes, ci, String.valueOf(i));
 
                             if (filesMap != null) {
                                 Set<String> files = filesMap.keySet();
@@ -199,15 +150,9 @@ public class GerritMiner {
                                     FileInfo fi = filesMap.get(file);
                                     MyFile myFile = new MyFile(mysql, revisionsID, file, fi.linesInserted, fi.linesDeleted);
                                     long fileID = myFile.sotre(true);
-                                    // Get comments per file
-                                    List<CommentInfo> ciList = comments.get(file);
-                                    if (ciList != null)
-                                        for (CommentInfo commentInfo : ciList) {
-                                            Long developerID = getDeveloperID(reviewID, commentInfo.author.name, commentInfo.author.email);
-                                            new MyComment(mysql, fileID, developerID, commentInfo.line, commentInfo.message, commentInfo.updated).store(true);
-                                            // System.out.println("File: " + file + ", Line: " + commentInfo.line + ", Comment: " + commentInfo.message);
-                                            // transId = insertCommentLuca(fileID, commentInfo.line, commentInfo.message);
-                                        }
+
+                                    // Add comments
+                                    addComments(comments, reviewID, file, fileID);
                                 }
                             }
                         }
@@ -221,6 +166,137 @@ public class GerritMiner {
             System.out.println("Gerrit ID: " + gerritId + " already present! ID: " + resultSet.getInt("ID"));
         }
         return minedResult;
+    }
+
+    /**
+     * Add a review into 'reviews' table
+     * 
+     * @param ci
+     *            a ChangeInfo object must be populated by API before call ths method
+     * @param gerritId
+     * @return the auto-increment ID used by DB
+     */
+    private long addReview(ChangeInfo ci, long gerritId) {
+        // Add a new review entry
+        String status = ci.status == null ? "" : ci.status.toString();
+        MyReview myReview = new MyReview(mysql, gerritId, ci.changeId, ci.created, ci.submitted, ci.updated, ci.project, ci.branch, status);
+        long reviewID = myReview.store(true);
+        return reviewID;
+    }
+
+    /**
+     * Add a owner into 'developers' table
+     * 
+     * @param ci
+     *            a ChangeInfo object must be populated by API before call this method
+     * @param reviewID
+     *            the entry ID used by 'reviews' table
+     */
+    private void addOwner(ChangeInfo ci, long reviewID) {
+        // Add owner by email(s)
+        List<String> emails = ci.owner.secondaryEmails;
+        if (emails != null) {
+            for (String email : emails)
+                new MyDeveloper(mysql, reviewID, "owner", ci.owner.name, ci.owner.username, ci.owner.email, email).store(true);
+        } else {
+            new MyDeveloper(mysql, reviewID, "owner", ci.owner.name, ci.owner.username, ci.owner.email, "").store(true);
+        }
+    }
+
+    /**
+     * Add all reviewers into 'developers' table
+     * 
+     * @param ci
+     *            a ChangeInfo object must be populated by API before call this method
+     * @param reviewID
+     *            the entry ID used by 'reviews' table
+     */
+    private void addReviewers(ChangeInfo ci, long reviewID) throws RestApiException {
+        List<ReviewerInfo> revs = getReviewers(ci);
+        for (ReviewerInfo ri : revs) {
+            List<String> emails = ri.secondaryEmails;
+            if (emails != null) {
+                for (String email : emails) {
+                    new MyDeveloper(mysql, reviewID, "reviewer", ri.name, ri.username, ri.email, email).store(true);
+                }
+            } else {
+                new MyDeveloper(mysql, reviewID, "reviewer", ri.name, ri.username, ri.email, "").store(true);
+            }
+        }
+    }
+
+    /**
+     * Add all messages into 'messages' table
+     * 
+     * @param ci
+     *            a ChangeInfo object must be populated by API before call this method
+     * @param reviewID
+     *            the entry ID used by 'reviews' table
+     */
+    private void addMessages(ChangeInfo ci, long reviewID) {
+        Collection<ChangeMessageInfo> messages = ci.messages;
+        if (messages != null) {
+            for (ChangeMessageInfo message : messages) {
+                if (message.author != null) {
+                    long developerID = getDeveloperID(reviewID, message.author.name, message.author.email);
+                    MyMessage myMessage = new MyMessage(mysql, reviewID, developerID, message.message, message.date);
+                    myMessage.store(true);
+                }
+            }
+        }
+    }
+
+    /**
+     * Add all files of a patch set into 'files' table
+     * 
+     * @param ci
+     *            a ChangeInfo object that must be populated by API before call this method
+     * @param reviewID
+     *            the entry ID used by 'reviews' table
+     * @param revisionsID
+     *            the entry ID used by 'revisions' table
+     * @param revisionId
+     *            the Gerrit revision ID (it is ah hash)
+     * @param filesMap
+     *            the files belonging to the current revision
+     */
+    private void addFiles(ChangeInfo ci, long reviewID, long revisionsID, String revisionId, Map<String, FileInfo> filesMap) {
+        // Getting the list of files per revision
+        Map<String, List<CommentInfo>> comments = getCommentPerRevision(changes, ci, revisionId);
+        if (filesMap != null) {
+            Set<String> files = filesMap.keySet();
+            for (String file : files) {
+                // Add file
+                FileInfo fi = filesMap.get(file);
+                MyFile myFile = new MyFile(mysql, revisionsID, file, fi.linesInserted, fi.linesDeleted);
+                long fileID = myFile.sotre(true);
+                // Add comments
+                addComments(comments, reviewID, file, fileID);
+            }
+        }
+
+    }
+
+    /**
+     * Add all comments of a patch set into 'files' table
+     * 
+     * @param comments
+     *            a list of comments previously populated by calling the API
+     * @param reviewID
+     *            the entry ID used by 'reviews' table
+     * @param file
+     *            the current file
+     * @param fileID
+     *            the ntry ID used by 'files' table
+     */
+    private void addComments(Map<String, List<CommentInfo>> comments, long reviewID, String file, long fileID) {
+        // Get comments per file
+        List<CommentInfo> ciList = comments.get(file);
+        if (ciList != null)
+            for (CommentInfo commentInfo : ciList) {
+                Long developerID = getDeveloperID(reviewID, commentInfo.author.name, commentInfo.author.email);
+                new MyComment(mysql, fileID, developerID, commentInfo.line, commentInfo.message, commentInfo.updated).store(true);
+            }
     }
 
     private long getDeveloperID(long reviewID, String name, String email) {
@@ -272,13 +348,13 @@ public class GerritMiner {
     // return new Change(totComments, bodyComments);
     // }
 
-    private List<ReviewerInfo> getReviewers(Changes changes, ChangeInfo c) throws RestApiException {
+    private List<ReviewerInfo> getReviewers(ChangeInfo ci) throws RestApiException {
         List<ReviewerInfo> res = new ArrayList<ReviewerInfo>();
         int numTries = 1;
         while (true) {
             try {
                 // Getting the list of xxx for each file
-                res = changes.id(c._number).listReviewers();
+                res = changes.id(ci._number).listReviewers();
                 break;
             } catch (com.urswolfer.gerrit.client.rest.http.HttpStatusException e) {
                 System.out.println("Unable to get the list of the reviewers");
@@ -286,7 +362,7 @@ public class GerritMiner {
             } catch (com.google.gerrit.extensions.restapi.RestApiException e) {
                 if (numTries > 100) {
                     System.out.println("Too many tries! Quitting...");
-                    System.out.println("Sort key of the last element: " + c._sortkey);
+                    System.out.println("Sort key of the last element: " + ci._sortkey);
                     System.exit(-1);
                 }
                 numTries++;
@@ -321,7 +397,7 @@ public class GerritMiner {
         return comments;
     }
 
-    private List<ChangeInfo> getChangeList(Changes changes, long id) {
+    private List<ChangeInfo> getChangeList(long id) {
         List<ChangeInfo> reviews = null;
         int numTries = 1;
 
