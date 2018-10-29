@@ -13,8 +13,6 @@ import org.lucapscarella.JMSAPI.ConsumerImpl;
 
 public class GerritConsumer extends ConsumerImpl {
 
-    // private MySQL mysql;
-    private GerritMiner gerritMiner;
 
     public GerritConsumer(String host, String port, String queueName) throws JMSException {
         super(host, Integer.parseInt(port), queueName);
@@ -43,7 +41,7 @@ public class GerritConsumer extends ConsumerImpl {
                 // Remote settings received now start gerrit miner and wait for an instance
                 MineRequest mr = (MineRequest) ((ObjectMessage) message).getObject();
                 MySQL mysql = new MySQL(mr.getMysqlHost(), mr.getMysqlPort(), mr.getMysqlName(), mr.getMysqlUser(), mr.getMysqlPassword());
-                gerritMiner = new GerritMiner(mysql, mr.getGerritURL());
+                GerritMiner gerritMiner = new GerritMiner(mysql, mr.getGerritURL());
                 gerritMiner.start();
                 System.out.println("Request: mine Gerrit ID from " + mr.getStartGerritID() + " to " + mr.getStopGerritID());
                 List<MinedResults> minedResults = gerritMiner.mine(mr.getStartGerritID(), mr.getStopGerritID());
@@ -56,6 +54,7 @@ public class GerritConsumer extends ConsumerImpl {
                     mr.setMinedResults(null);
                     mr.setOperation(false);
                 }
+                gerritMiner.close();
                 response = (ObjectMessage) session.createObjectMessage();
                 ((ObjectMessage) response).setObject(mr);
             }

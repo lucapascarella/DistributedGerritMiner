@@ -408,17 +408,17 @@ public class GerritMiner {
     // return null;
     // }
 
-    public HashMap<String, String> getCommentsBody(Set<String> files, Map<String, List<CommentInfo>> comments) {
-        HashMap<String, String> commentsBody = new HashMap<String, String>();
-        for (String file : files) {
-            List<CommentInfo> commentsList = comments.getOrDefault(file, null);
-
-            if (commentsList != null) {
-                commentsBody.put(file, String.join("\n###NEWCOMMENT###\n", commentsList.stream().map(x -> x.message).toArray(size -> new String[size])));
-            }
-        }
-        return commentsBody;
-    }
+    // public HashMap<String, String> getCommentsBody(Set<String> files, Map<String, List<CommentInfo>> comments) {
+    // HashMap<String, String> commentsBody = new HashMap<String, String>();
+    // for (String file : files) {
+    // List<CommentInfo> commentsList = comments.getOrDefault(file, null);
+    //
+    // if (commentsList != null) {
+    // commentsBody.put(file, String.join("\n###NEWCOMMENT###\n", commentsList.stream().map(x -> x.message).toArray(size -> new String[size])));
+    // }
+    // }
+    // return commentsBody;
+    // }
 
     public HashMap<String, Integer> getNumberOfComments(Set<String> files, Map<String, List<CommentInfo>> comments) {
         HashMap<String, Integer> totComments = new HashMap<String, Integer>();
@@ -449,6 +449,10 @@ public class GerritMiner {
         if (toFormat != null)
             return toFormat.toString().replaceAll("\\'", "").replaceAll("\"", "").replaceAll("%", "").replace("\\", "");
         return "0";
+    }
+
+    public void close() {
+        mysql.closeConnection();
     }
 
 }

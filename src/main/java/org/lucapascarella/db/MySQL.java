@@ -23,7 +23,7 @@ public class MySQL {
             String myURL = "jdbc:mysql://" + host + ":" + port + "/" + dbName + "?autoReconnect=true&useSSL=false";
             connection = DriverManager.getConnection(myURL, username, password);
             stmt = connection.createStatement();
-            //System.out.println("Database connected!");
+            // System.out.println("Database connected!");
         } catch (SQLException e) {
             throw new IllegalStateException("Cannot connect the database!", e);
         }
@@ -224,5 +224,13 @@ public class MySQL {
             return false;
         }
         return true;
+    }
+
+    public void closeConnection() {
+        try {
+            connection.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 }

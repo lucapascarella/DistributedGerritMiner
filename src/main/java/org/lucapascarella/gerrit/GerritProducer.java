@@ -56,7 +56,7 @@ public class GerritProducer extends ProducerImpl {
             this.sendObject(remoteRequest);
             System.out.println("Request: " + remoteRequest.getStartGerritID());
             // Check queue size wait if too much elements are present
-            while (mapSize() > 10) {
+            while (mapSize() > 20) {
                 try {
                     TimeUnit.SECONDS.sleep(1);
                 } catch (InterruptedException e) {
