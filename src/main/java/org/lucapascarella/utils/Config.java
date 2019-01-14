@@ -21,10 +21,10 @@ public class Config {
     private PropertiesConfiguration config;
     private Map<String, String> propDefault;
 
-    public Config(Args args) {
+    public Config(Args args, String filename) {
         this.args = args;
         // Get configuration file name
-        String configFileName = args.getArg("prop", "config.txt");
+        String configFileName = args.getArg("prop", filename);
         // Get default properties
         this.propDefault = PropDef.getDefaultList();
         // Check for file existence otherwise create one

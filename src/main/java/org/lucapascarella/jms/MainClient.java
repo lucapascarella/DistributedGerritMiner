@@ -17,7 +17,7 @@ public class MainClient {
         System.out.println("*** Program (MainClient) " + PropDef.progName[1] + " version: " + PropDef.progVersion[1] + " ***\n");
 
         // Parse CLI parameters and load program configurations
-        Config config = new Config(new Args(args));
+        Config config = new Config(new Args(args), "config.main.txt");
 
         // Create a connection to JMS Host dispatcher
         String jmsHost = config.getProp(PropDef.defaultJMSHost[0]);

@@ -15,7 +15,7 @@ public class MainWorker {
         System.out.println("*** Program (MainWorker) " + PropDef.progName[1] + " version: " + PropDef.progVersion[1] + " ***\n");
 
         // Parse CLI parameters and load program configurations
-        Config config = new Config(new Args(args));
+        Config config = new Config(new Args(args), "config.worker.txt");
 
         // Connect to JMS Host and start Gerrit Miner worker
         try {
