@@ -24,9 +24,9 @@ Requirements
 Computational distribution relies to a message broker for Java language, specifically, Java Message Service (JMS).
 In practice this template uses [Apache ActiveMQ](http://activemq.apache.org/ "Apache ActiveMQ")
 
-1. Download Apache ActiveMQ executable package: wget http://mirror.nohup.it/apache//activemq/5.15.2/apache-activemq-5.15.2-bin.tar.gz
-2. unpack download archive: tar -xzvf apache-activemq-5.15.2-bin.tar.gz
-3. run activeMQ server with ./bin/activemq start
+1. Download Apache ActiveMQ executable package: `wget http://it.apache.contactlab.it//activemq/5.15.8/apache-activemq-5.15.8-bin.tar.gz`
+2. unpack download archive: `tar -xzvf apache-activemq-5.15.8-bin.tar.gz`
+3. run activeMQ server with `./bin/activemq start`
 
 Configuration
 -----------
