@@ -344,14 +344,18 @@ public class GerritMiner {
                 System.out.println("Unable to get the list of the reviewers");
                 break;
             } catch (com.google.gerrit.extensions.restapi.RestApiException e) {
-                if (numTries > 10) {
+                if (numTries > 100) {
                     System.out.println("Too many tries! Quitting...");
                     System.out.println("Sort key of the last element: " + ci._sortkey);
                     // System.exit(-1);
                     break;
                 }
-                numTries++;
-                System.out.println("--------REQUEST FAILED: doing a new request. Request number " + numTries);
+                try {
+                    Thread.sleep(100 * numTries);
+                } catch (InterruptedException e1) {
+                    e1.printStackTrace();
+                }
+                System.out.println("--------REQUEST FAILED: doing a new request. Request number " + numTries++);
             }
         }
         return res;
@@ -375,8 +379,12 @@ public class GerritMiner {
                     System.out.println("Sort key of the last element: " + c._sortkey);
                     System.exit(-1);
                 }
-                numTries++;
-                System.out.println("--------REQUEST FAILED: doing a new request. Request number " + numTries);
+                try {
+                    Thread.sleep(100 * numTries);
+                } catch (InterruptedException e1) {
+                    e1.printStackTrace();
+                }
+                System.out.println("--------REQUEST FAILED: doing a new request. Request number " + numTries++);
             }
         }
         return comments;
@@ -392,13 +400,17 @@ public class GerritMiner {
                         .withOptions(ListChangesOption.ALL_FILES, ListChangesOption.ALL_REVISIONS, ListChangesOption.DETAILED_ACCOUNTS, ListChangesOption.ALL_COMMITS, ListChangesOption.MESSAGES).get();
                 break;
             } catch (com.google.gerrit.extensions.restapi.RestApiException e) {
-                if (numTries > 10) {
+                if (numTries > 100) {
                     System.out.println("Too many tries! Quitting...");
                     // System.exit(-1);
                     break; // Return with a null to remove the elment from the JMS queue
                 }
-                numTries++;
-                System.out.println("--------REQUEST FAILED: doing a new request. Request number " + numTries);
+                try {
+                    Thread.sleep(100 * numTries);
+                } catch (InterruptedException e1) {
+                    e1.printStackTrace();
+                }
+                System.out.println("--------REQUEST FAILED: doing a new request. Request number " + numTries++);
             }
         }
         return reviews;

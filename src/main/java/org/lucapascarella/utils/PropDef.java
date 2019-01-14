@@ -11,11 +11,11 @@ public final class PropDef {
 
     // Hard coded program informations
     public static String[] progName = { "prog.name", "Main interface" };
-    public static String[] progVersion = { "prog.ver", "0.1" };
+    public static String[] progVersion = { "prog.ver", "0.2" };
     public static String[] defaultWorkingDirectory = { "prog.workdir", "/Users/luca/TUProjects/workspace/ActiveMQTest" };
 
     // Program configuration files
-    public static String[] configVersion = { "config.version", "0.1" };
+    public static String[] configVersion = { "config.version", "0.2" };
     // public static String[] defaultFilePropName = { "config.file", "config.txt" };
     // public static String[] defaultClientList = { "config.clients", "clients.txt" };
 
@@ -27,8 +27,8 @@ public final class PropDef {
     public static String defaultDBName[] = { "database.name", "gerritMiner" };
 
     // JMS values
-    public static String defaultJMSHost[] = { "jms.host", "delft.pascarella.cloud" };
-    public static String defaultJMSPort[] = { "jms.port", "61616" };
+    public static String defaultJMSHost[] = { "jms.host", "mumbai.pascarella.cloud" };
+    public static String defaultJMSPort[] = { "jms.port", "60001" }; // 61616
     public static String defaultJMSQueue[] = { "jms.queue", "miner" };
 
     // Gerrit settings
