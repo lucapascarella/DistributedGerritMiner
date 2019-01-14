@@ -1,5 +1,7 @@
 # Local files
 config.txt
+config.worker.txt
+config.main.txt
 
 # Compiled class file
 *.class
