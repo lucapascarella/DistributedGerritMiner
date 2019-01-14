@@ -13,7 +13,6 @@ import org.lucapscarella.JMSAPI.ConsumerImpl;
 
 public class GerritConsumer extends ConsumerImpl {
 
-
     public GerritConsumer(String host, String port, String queueName) throws JMSException {
         super(host, Integer.parseInt(port), queueName);
     }
@@ -47,12 +46,10 @@ public class GerritConsumer extends ConsumerImpl {
                 List<MinedResults> minedResults = gerritMiner.mine(mr.getStartGerritID(), mr.getStopGerritID());
                 if (minedResults != null && minedResults.size() > 0) {
                     // Return mined objects
-                    mr.setMinedResults(minedResults.get(0));
-                    mr.setOperation(true);
+                    mr.setMinedResults(minedResults);
                 } else {
                     // Return null
                     mr.setMinedResults(null);
-                    mr.setOperation(false);
                 }
                 gerritMiner.close();
                 response = (ObjectMessage) session.createObjectMessage();

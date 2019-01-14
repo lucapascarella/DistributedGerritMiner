@@ -35,6 +35,7 @@ public final class PropDef {
     public static String defaultGerritURL[] = { "gerrit.url", "https://codereview.qt-project.org" };
     public static String defaultGerritStartID[] = { "gerrit.start", "1" };
     public static String defaultGerritStopID[] = { "gerrit.stop", "1000" };
+    public static String defaultRequestsPerWorker[] = { "gerrit.requests", "5" };
 
     public static char getFileSeparator() {
         String rtn = System.getProperty("file.separator");

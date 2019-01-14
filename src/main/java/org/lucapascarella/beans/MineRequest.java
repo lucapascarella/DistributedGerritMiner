@@ -1,6 +1,7 @@
 package org.lucapascarella.beans;
 
 import java.io.Serializable;
+import java.util.List;
 
 public class MineRequest implements Serializable {
 
@@ -8,8 +9,8 @@ public class MineRequest implements Serializable {
     private String gerritURL;
     private Long startGerritID;
     private Long stopGerritID;
-    private Boolean operation;
-    private MinedResults minedResults;
+    // private Boolean operation;
+    private List<MinedResults> minedResults;
     private String mysqlHost, mysqlPort, mysqlName, mysqlUser, mysqlPassword;
 
     public MineRequest(String gerritURL, Long startGerritID, Long stopGerritID, String mysqlHost, String mysqlPort, String mysqlName, String mysqlUser, String mysqlPassword) {
@@ -35,19 +36,19 @@ public class MineRequest implements Serializable {
     public Long getStopGerritID() {
         return stopGerritID;
     }
-    public Boolean getOperation() {
-        return operation;
-    }
+    // public Boolean getOperation() {
+    // return operation;
+    // }
 
-    public void setOperation(Boolean operation) {
-        this.operation = operation;
-    }
+    // public void setOperation(Boolean operation) {
+    // this.operation = operation;
+    // }
 
-    public MinedResults getMinedResults() {
+    public List<MinedResults> getMinedResults() {
         return minedResults;
     }
 
-    public void setMinedResults(MinedResults remote) {
+    public void setMinedResults(List<MinedResults> remote) {
         this.minedResults = remote;
     }
 

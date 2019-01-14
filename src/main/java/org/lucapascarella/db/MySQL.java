@@ -49,6 +49,23 @@ public class MySQL {
         return null;
     }
 
+    public String updateQuery(String table, String what, String value1, String where, String value2) {
+        // List<String> list = null;
+        // Prepare the SELECT string to query
+        String query = "UPDATE `" + table + "` SET `" + what + "`='" + value1 + "' WHERE `" + where + "`='" + value2 + "'";
+        // System.out.println(query);
+        try {
+            stmt.executeUpdate(query, Statement.RETURN_GENERATED_KEYS);
+            ResultSet rs = stmt.getGeneratedKeys();
+            int key = rs.next() ? rs.getInt(1) : 0;
+
+            return String.valueOf(key);
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
     public ResultSet selectQuery(String table, String what, String where, String action, String value) {
         // List<String> list = null;
         // Prepare the SELECT string to query

@@ -61,21 +61,22 @@ public class GerritMiner {
         changes = gerritApi.changes();
     }
 
-    public MinedResults mine(int gerritID) {
-        MinedResults minedResults = null;
-        try {
-            minedResults = work(gerritID);
-        } catch (RestApiException e) {
-            e.printStackTrace();
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return minedResults;
+    public List<MinedResults> mine(int gerritID) {
+        // MinedResults minedResults = null;
+        // try {
+        // minedResults = work(gerritID);
+        // } catch (RestApiException e) {
+        // e.printStackTrace();
+        // } catch (SQLException e) {
+        // e.printStackTrace();
+        // }
+        // return minedResults;
+        return mine(gerritID, gerritID + 1);
     }
 
     public List<MinedResults> mine(long startGerritID, long stopGerritID) {
         List<MinedResults> list = new ArrayList<MinedResults>();
-        while (startGerritID <= stopGerritID) {
+        while (startGerritID < stopGerritID) {
             try {
                 list.add(work(startGerritID));
             } catch (RestApiException e) {
@@ -99,7 +100,7 @@ public class GerritMiner {
         if (resultSet != null && !resultSet.next()) {
             // Query Gerrit API for getting the current Gerrit ID
             List<ChangeInfo> changeList = getChangeList(gerritId);
-            if (!changeList.isEmpty()) {
+            if (changeList != null && !changeList.isEmpty()) {
                 for (ChangeInfo ci : changeList) {
                     // Add a new review entry into DB
                     long reviewID = addReview(ci, gerritId);
@@ -123,14 +124,13 @@ public class GerritMiner {
                      * Otherwise find a better workaround
                      */
                     if (revisionsNumber == revisions.size()) {
-
                         // Change newChange = getCommentsPerReview(changes, gerritId, changeList, ci);
                         for (Map.Entry<String, RevisionInfo> revision : revisions.entrySet()) {
                             String revisionId = revision.getKey();
                             RevisionInfo ri = revision.getValue();
                             System.out.println("Gerrit ID: " + gerritId + ". Revision: " + ri._number);
                             // Add revision
-                            MyRevision myRevision = new MyRevision(mysql, reviewID, revisionId, ri._number, ri.created, ri.commit.message, ri.commit.subject, ri.commit.parents.get(0).commit);
+                            MyRevision myRevision = new MyRevision(mysql, reviewID, revisionId, ri._number, revisionsNumber, ri.created, ri.commit.message, ri.commit.subject, ri.commit.parents.get(0).commit);
                             long revisionsID = myRevision.store(true);
                             // Add files
                             addFiles(ci, reviewID, revisionsID, revisionId, ri.files);
@@ -140,7 +140,7 @@ public class GerritMiner {
                         System.out.println("Workaround for Gerrit ID: " + gerritId + ". Revision: " + revisionsNumber);
                         for (int i = revisionsNumber; i > 0; i--) {
                             // Add revision
-                            MyRevision myRevision = new MyRevision(mysql, reviewID, "", i, ri2.created, ri2.commit.message, ri2.commit.subject, ri2.commit.parents.get(0).commit);
+                            MyRevision myRevision = new MyRevision(mysql, reviewID, "", i, revisionsNumber, ri2.created, ri2.commit.message, ri2.commit.subject, ri2.commit.parents.get(0).commit);
                             long revisionsID = myRevision.store(true);
                             // Get Files and Comments
                             Map<String, FileInfo> filesMap = ri2.files; // getFilesPerRevision(changes, ci, String.valueOf(i));
@@ -160,15 +160,20 @@ public class GerritMiner {
                             }
                         }
                     }
-
+                    minedResult.setStatus("Processed");
+                    minedResult.setDone(true);
+                    String rtn = mysql.updateQuery("reviews", "mineStatus", "WorkerDone", "ID", String.valueOf(reviewID));
+                    reviewID = Long.parseLong(rtn);
                 }
             } else {
-                System.out.println("Gerrit ID: " + gerritId + " empty!");
+                System.out.println("Gerrit ID: " + gerritId + " empty or null!");
+                minedResult.setStatus("Cannot get changes");
                 minedResult.setReviewID(-1);
             }
         } else {
             long id = resultSet.getInt("ID");
             System.out.println("Gerrit ID: " + gerritId + " already present! ID: " + id);
+            minedResult.setStatus("Already present");
             minedResult.setReviewID(id);
         }
         return minedResult;
@@ -185,7 +190,7 @@ public class GerritMiner {
     private long addReview(ChangeInfo ci, long gerritId) {
         // Add a new review entry
         String status = ci.status == null ? "" : ci.status.toString();
-        MyReview myReview = new MyReview(mysql, gerritId, ci.changeId, ci.created, ci.submitted, ci.updated, ci.project, ci.branch, status);
+        MyReview myReview = new MyReview(mysql, gerritId, ci.changeId, ci.created, ci.submitted, ci.updated, ci.project, ci.branch, status, "WorkerStarted");
         long reviewID = myReview.store(true);
         return reviewID;
     }
@@ -330,10 +335,11 @@ public class GerritMiner {
                 System.out.println("Unable to get the list of the reviewers");
                 break;
             } catch (com.google.gerrit.extensions.restapi.RestApiException e) {
-                if (numTries > 100) {
+                if (numTries > 10) {
                     System.out.println("Too many tries! Quitting...");
                     System.out.println("Sort key of the last element: " + ci._sortkey);
-                    System.exit(-1);
+                    // System.exit(-1);
+                    break;
                 }
                 numTries++;
                 System.out.println("--------REQUEST FAILED: doing a new request. Request number " + numTries);
@@ -377,9 +383,10 @@ public class GerritMiner {
                         .withOptions(ListChangesOption.ALL_FILES, ListChangesOption.ALL_REVISIONS, ListChangesOption.DETAILED_ACCOUNTS, ListChangesOption.ALL_COMMITS, ListChangesOption.MESSAGES).get();
                 break;
             } catch (com.google.gerrit.extensions.restapi.RestApiException e) {
-                if (numTries > 100) {
+                if (numTries > 10) {
                     System.out.println("Too many tries! Quitting...");
-                    System.exit(-1);
+                    // System.exit(-1);
+                    break; // Return with a null to remove the elment from the JMS queue
                 }
                 numTries++;
                 System.out.println("--------REQUEST FAILED: doing a new request. Request number " + numTries);

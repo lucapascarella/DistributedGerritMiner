@@ -41,13 +41,11 @@ Usage
 -----------
 
 #### Startup sequence
-1. start rmiregistry (ie. )
-2. start RMIServer (Remote methods executor)
-3. start RMIClient (Local dispatcher client)
- 
- * startup procedure:
- * 1 - JMSProvider (ActiveMQ)
- * 2 - Repliche
- * 3 - rmiregistry
- * 4 - Server
- * 5 - Client
+1. Start activeMQ server `./bin/activemq start`
+2. Change `config.txt` with your requirements
+3. Lunch a single instance of `MainClient.java`
+	This method populates the JMS queue with `MineRequest.java` objects that represent Gerrit reviews to mine.
+	It also contains the DB server address where workers store results.
+4. Lunch n instances of MainWorker.java
+	`MainWorker.java` are the GerritMiner actual workers.
+	These replies need an Internet connection to query the Gerrit API and a remote access to the DB where put results.

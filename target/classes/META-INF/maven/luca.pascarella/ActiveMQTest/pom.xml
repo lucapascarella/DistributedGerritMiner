@@ -32,12 +32,12 @@
   	<dependency>
   		<groupId>com.urswolfer.gerrit.client.rest</groupId>
   		<artifactId>gerrit-rest-java-client</artifactId>
-  		<version>0.8.13</version>
+  		<version>0.8.16</version>
   	</dependency>
   	<dependency>
   		<groupId>org.apache.activemq</groupId>
   		<artifactId>activemq-all</artifactId>
-  		<version>5.15.3</version>
+  		<version>5.15.8</version>
   	</dependency>
   </dependencies>
 </project>

@@ -1,5 +1,8 @@
 package org.lucapascarella.gerrit;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import javax.jms.JMSException;
@@ -49,12 +52,15 @@ public class GerritProducer extends ProducerImpl {
         // Get Gerrit IDs to mine
         long startIdToMine = Long.parseLong(config.getProp(PropDef.defaultGerritStartID[0]));
         long stopIdToMine = Long.parseLong(config.getProp(PropDef.defaultGerritStopID[0]));
+        long requestsPerWorker = Long.parseLong(config.getProp(PropDef.defaultRequestsPerWorker[0]));
 
         // Send a few requests and wait before send others
-        for (long i = startIdToMine; i < stopIdToMine; i++) {
-            MineRequest remoteRequest = new MineRequest(gerritURL, i, i, sqlHost, sqlPort, sqlDBName, sqlUser, sqlPass);
+        for (long i = startIdToMine; i < stopIdToMine; i += requestsPerWorker) {
+            long startGerritID = i;
+            long stopGerritID = i + requestsPerWorker;
+            MineRequest remoteRequest = new MineRequest(gerritURL, startGerritID, stopGerritID, sqlHost, sqlPort, sqlDBName, sqlUser, sqlPass);
             this.sendObject(remoteRequest);
-            System.out.println("Request: " + remoteRequest.getStartGerritID());
+            System.out.println("Request: " + remoteRequest.getStartGerritID() + " to " + remoteRequest.getStopGerritID());
             // Check queue size wait if too much elements are present
             while (mapSize() > 20) {
                 try {
@@ -65,6 +71,25 @@ public class GerritProducer extends ProducerImpl {
             }
         }
 
+    }
+
+    private void confirmOrDeleteEntry(MinedResults mr) throws SQLException {
+        String mineStatus;
+        long gerritID;
+        ResultSet resultSet = mysql.selectQuery("reviews", "ID, mineStatus", "gerritId", MySQL.SELECT_EQUAL, String.valueOf(mr.getGerritId()));
+        if (resultSet != null && resultSet.next()) {
+            mineStatus = resultSet.getString("mineStatus");
+            gerritID = resultSet.getInt("ID");
+
+            if (mineStatus.equals("WorkerDone") && mr.getDone()) {
+                mysql.updateQuery("reviews", "mineStatus", "ClientConfirmed", "ID", String.valueOf(gerritID));
+                System.out.println("\t Gerrit ID: " + mr.getGerritId() + " - Entry updated. " + mr.getStatus());
+            } else {
+                System.out.println("\t Gerrit ID: " + mr.getGerritId() + " - Cannot update entry. " + mr.getStatus());
+            }
+        } else {
+            System.out.println("\t Gerrit ID: " + mr.getGerritId() + " - No entry found. " + mr.getStatus());
+        }
     }
 
     /**
@@ -83,17 +108,21 @@ public class GerritProducer extends ProducerImpl {
                 MineRequest requestedObject = (MineRequest) getValue(correlationId);
                 MineRequest receivedObject = (MineRequest) ((ObjectMessage) message).getObject();
                 // What happened
-                MinedResults minedResults = receivedObject.getMinedResults();
-                if (minedResults != null)
-                    System.out.println("Requested Gerrit range: " + requestedObject.getStartGerritID() + "-" + requestedObject.getStopGerritID() + ". Respose: " + receivedObject.getOperation() + " Gerrit ID: "
-                            + minedResults.getGerritId() + ". Review ID: " + minedResults.getReviewID());
-                else
-                    System.out.println("Requested Gerrit range: " + requestedObject.getStartGerritID() + "-" + requestedObject.getStopGerritID() + ". Respose: " + receivedObject.getOperation());
+                List<MinedResults> minedResults = receivedObject.getMinedResults();
+                if (minedResults != null) {
+                    System.out.println("Requested Gerrit range: " + requestedObject.getStartGerritID() + "-" + requestedObject.getStopGerritID());
+                    for (MinedResults mr : minedResults)
+                        confirmOrDeleteEntry(mr);
+                } else {
+                    System.out.println("Requested Gerrit range: " + requestedObject.getStartGerritID() + " - " + requestedObject.getStopGerritID() + ". All failed!");
+                }
             } else {
 
             }
             removeKeyFromMap(correlationId);
         } catch (JMSException e) {
+            e.printStackTrace();
+        } catch (SQLException e) {
             e.printStackTrace();
         }
     }
