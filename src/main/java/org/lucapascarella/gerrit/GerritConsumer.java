@@ -40,7 +40,7 @@ public class GerritConsumer extends ConsumerImpl {
                 // Remote settings received now start gerrit miner and wait for an instance
                 MineRequest mr = (MineRequest) ((ObjectMessage) message).getObject();
                 MySQL mysql = new MySQL(mr.getMysqlHost(), mr.getMysqlPort(), mr.getMysqlName(), mr.getMysqlUser(), mr.getMysqlPassword());
-                GerritMiner gerritMiner = new GerritMiner(mysql, mr.getGerritURL());
+                GerritMiner gerritMiner = new GerritMiner(mysql, mr.getGerritURL(), mr.getGerritProject());
                 gerritMiner.start();
                 System.out.println("Request: mine Gerrit ID from " + mr.getStartGerritID() + " to " + mr.getStopGerritID());
                 List<MinedResults> minedResults = gerritMiner.mine(mr.getStartGerritID(), mr.getStopGerritID());

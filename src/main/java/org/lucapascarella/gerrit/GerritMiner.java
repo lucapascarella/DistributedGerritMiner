@@ -34,17 +34,19 @@ import com.urswolfer.gerrit.client.rest.GerritRestApiFactory;
 
 public class GerritMiner {
     private MySQL mysql;
-    private String gettirUrl;
+    private String gerritUrl;
     private Changes changes;
+    private String gerritProject;
 
     public GerritMiner() {
         super();
     }
 
-    public GerritMiner(MySQL mysql, String gerritUrl) {
+    public GerritMiner(MySQL mysql, String gerritUrl, String gerritProject) {
         super();
         this.mysql = mysql;
-        this.gettirUrl = gerritUrl;
+        this.gerritUrl = gerritUrl;
+        this.gerritProject = gerritProject;
     }
 
     public void start() {
@@ -56,7 +58,7 @@ public class GerritMiner {
         // new MyComment(mysql).checkTable();
         // Create Gerrit API connection
         GerritRestApiFactory gerritRestApiFactory = new GerritRestApiFactory();
-        GerritAuthData.Basic authData = new GerritAuthData.Basic(gettirUrl);
+        GerritAuthData.Basic authData = new GerritAuthData.Basic(gerritUrl);
         GerritApi gerritApi = gerritRestApiFactory.create(authData);
         changes = gerritApi.changes();
     }
@@ -102,68 +104,75 @@ public class GerritMiner {
             List<ChangeInfo> changeList = getChangeList(gerritId);
             if (changeList != null && !changeList.isEmpty()) {
                 for (ChangeInfo ci : changeList) {
-                    // Add a new review entry into DB
-                    long reviewID = addReview(ci, gerritId);
-                    minedResult.setReviewID(reviewID);
+                    if (gerritProject == "" || gerritProject.equalsIgnoreCase("*") || gerritProject.equalsIgnoreCase(ci.project)) {
 
-                    // Add a owner by email(s)
-                    addOwner(ci, reviewID);
+                        // Add a new review entry into DB
+                        long reviewID = addReview(ci, gerritId);
+                        minedResult.setReviewID(reviewID);
 
-                    // Add reviewers by email(s)
-                    addReviewers(ci, reviewID);
+                        // Add a owner by email(s)
+                        addOwner(ci, reviewID);
 
-                    // Add messages
-                    addMessages(ci, reviewID);
+                        // Add reviewers by email(s)
+                        addReviewers(ci, reviewID);
 
-                    // Workaround for revisions
-                    Map<String, RevisionInfo> revisions = ci.revisions;
-                    RevisionInfo ri2 = revisions.get(ci.currentRevision);
-                    int revisionsNumber = ri2._number;
-                    /*
-                     * I suspect a problem with 2.7 Gerrit API. In this case I can retrieve only last patch set. When we have only 1 patch set or the number of retrieved revisions is correct used the following method
-                     * Otherwise find a better workaround
-                     */
-                    if (revisionsNumber == revisions.size()) {
-                        // Change newChange = getCommentsPerReview(changes, gerritId, changeList, ci);
-                        for (Map.Entry<String, RevisionInfo> revision : revisions.entrySet()) {
-                            String revisionId = revision.getKey();
-                            RevisionInfo ri = revision.getValue();
-                            System.out.println("Gerrit ID: " + gerritId + ". Revision: " + ri._number);
-                            // Add revision
-                            MyRevision myRevision = new MyRevision(mysql, reviewID, revisionId, ri._number, revisionsNumber, ri.created, ri.commit.message, ri.commit.subject, ri.commit.parents.get(0).commit);
-                            long revisionsID = myRevision.store(true);
-                            // Add files
-                            addFiles(ci, reviewID, revisionsID, revisionId, ri.files);
-                        }
-                    } else {
-                        // TODO find an improvement for this problem
-                        System.out.println("Workaround for Gerrit ID: " + gerritId + ". Revision: " + revisionsNumber);
-                        for (int i = revisionsNumber; i > 0; i--) {
-                            // Add revision
-                            MyRevision myRevision = new MyRevision(mysql, reviewID, "", i, revisionsNumber, ri2.created, ri2.commit.message, ri2.commit.subject, ri2.commit.parents.get(0).commit);
-                            long revisionsID = myRevision.store(true);
-                            // Get Files and Comments
-                            Map<String, FileInfo> filesMap = ri2.files; // getFilesPerRevision(changes, ci, String.valueOf(i));
-                            Map<String, List<CommentInfo>> comments = getCommentPerRevision(changes, ci, String.valueOf(i));
+                        // Add messages
+                        addMessages(ci, reviewID);
 
-                            if (filesMap != null) {
-                                Set<String> files = filesMap.keySet();
-                                for (String file : files) {
-                                    // Add file
-                                    FileInfo fi = filesMap.get(file);
-                                    MyFile myFile = new MyFile(mysql, revisionsID, file, fi.linesInserted, fi.linesDeleted);
-                                    long fileID = myFile.sotre(true);
+                        // Workaround for revisions
+                        Map<String, RevisionInfo> revisions = ci.revisions;
+                        RevisionInfo ri2 = revisions.get(ci.currentRevision);
+                        int revisionsNumber = ri2._number;
+                        /*
+                         * I suspect a problem with 2.7 Gerrit API. In this case I can retrieve only last patch set. When we have only 1 patch set or the number of retrieved revisions is correct used the following method
+                         * Otherwise find a better workaround
+                         */
+                        if (revisionsNumber == revisions.size()) {
+                            // Change newChange = getCommentsPerReview(changes, gerritId, changeList, ci);
+                            for (Map.Entry<String, RevisionInfo> revision : revisions.entrySet()) {
+                                String revisionId = revision.getKey();
+                                RevisionInfo ri = revision.getValue();
+                                System.out.println("Gerrit ID: " + gerritId + ". Revision: " + ri._number);
+                                // Add revision
+                                MyRevision myRevision = new MyRevision(mysql, reviewID, revisionId, ri._number, revisionsNumber, ri.created, ri.commit.message, ri.commit.subject, ri.commit.parents.get(0).commit);
+                                long revisionsID = myRevision.store(true);
+                                // Add files
+                                addFiles(ci, reviewID, revisionsID, revisionId, ri.files);
+                            }
+                        } else {
+                            // TODO find an improvement for this problem
+                            System.out.println("Workaround for Gerrit ID: " + gerritId + ". Revision: " + revisionsNumber);
+                            for (int i = revisionsNumber; i > 0; i--) {
+                                // Add revision
+                                MyRevision myRevision = new MyRevision(mysql, reviewID, "", i, revisionsNumber, ri2.created, ri2.commit.message, ri2.commit.subject, ri2.commit.parents.get(0).commit);
+                                long revisionsID = myRevision.store(true);
+                                // Get Files and Comments
+                                Map<String, FileInfo> filesMap = ri2.files; // getFilesPerRevision(changes, ci, String.valueOf(i));
+                                Map<String, List<CommentInfo>> comments = getCommentPerRevision(changes, ci, String.valueOf(i));
 
-                                    // Add comments
-                                    addComments(comments, reviewID, file, fileID);
+                                if (filesMap != null) {
+                                    Set<String> files = filesMap.keySet();
+                                    for (String file : files) {
+                                        // Add file
+                                        FileInfo fi = filesMap.get(file);
+                                        MyFile myFile = new MyFile(mysql, revisionsID, file, fi.linesInserted, fi.linesDeleted);
+                                        long fileID = myFile.sotre(true);
+
+                                        // Add comments
+                                        addComments(comments, reviewID, file, fileID);
+                                    }
                                 }
                             }
                         }
+                        minedResult.setStatus("Processed");
+                        minedResult.setDone(true);
+                        String rtn = mysql.updateQuery("reviews", "mineStatus", "WorkerDone", "ID", String.valueOf(reviewID));
+                        reviewID = Long.parseLong(rtn);
+                    } else {
+                        System.out.println("Gerrit ID: " + gerritId + " unwanted project!");
+                        minedResult.setStatus("Unwanted project");
+                        minedResult.setReviewID(-1);
                     }
-                    minedResult.setStatus("Processed");
-                    minedResult.setDone(true);
-                    String rtn = mysql.updateQuery("reviews", "mineStatus", "WorkerDone", "ID", String.valueOf(reviewID));
-                    reviewID = Long.parseLong(rtn);
                 }
             } else {
                 System.out.println("Gerrit ID: " + gerritId + " empty or null!");

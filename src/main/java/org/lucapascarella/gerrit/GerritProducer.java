@@ -34,6 +34,7 @@ public class GerritProducer extends ProducerImpl {
     public void startMining(Config config) {
         // Update remote worker with know DB host
         String gerritURL = config.getProp(PropDef.defaultGerritURL[0]);
+        String gerritProject = config.getProp(PropDef.defaultGerritProject[0]);
         String sqlHost = config.getProp(PropDef.defaultDBHost[0]);
         String sqlPort = config.getProp(PropDef.defaultDBPort[0]);
         String sqlDBName = config.getProp(PropDef.defaultDBName[0]);
@@ -58,7 +59,7 @@ public class GerritProducer extends ProducerImpl {
         for (long i = startIdToMine; i < stopIdToMine; i += requestsPerWorker) {
             long startGerritID = i;
             long stopGerritID = i + requestsPerWorker;
-            MineRequest remoteRequest = new MineRequest(gerritURL, startGerritID, stopGerritID, sqlHost, sqlPort, sqlDBName, sqlUser, sqlPass);
+            MineRequest remoteRequest = new MineRequest(gerritURL, gerritProject, startGerritID, stopGerritID, sqlHost, sqlPort, sqlDBName, sqlUser, sqlPass);
             this.sendObject(remoteRequest);
             System.out.println("Request: " + remoteRequest.getStartGerritID() + " to " + remoteRequest.getStopGerritID());
             // Check queue size wait if too much elements are present

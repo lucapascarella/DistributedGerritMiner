@@ -6,16 +6,17 @@ import java.util.List;
 public class MineRequest implements Serializable {
 
     private static final long serialVersionUID = 1L;
-    private String gerritURL;
+    private String gerritURL, gerritProject;
     private Long startGerritID;
     private Long stopGerritID;
     // private Boolean operation;
     private List<MinedResults> minedResults;
     private String mysqlHost, mysqlPort, mysqlName, mysqlUser, mysqlPassword;
 
-    public MineRequest(String gerritURL, Long startGerritID, Long stopGerritID, String mysqlHost, String mysqlPort, String mysqlName, String mysqlUser, String mysqlPassword) {
+    public MineRequest(String gerritURL, String gerritProject, Long startGerritID, Long stopGerritID, String mysqlHost, String mysqlPort, String mysqlName, String mysqlUser, String mysqlPassword) {
         super();
         this.gerritURL = gerritURL;
+        this.gerritProject = gerritProject;
         this.startGerritID = startGerritID;
         this.stopGerritID = stopGerritID;
         this.mysqlHost = mysqlHost;
@@ -27,6 +28,10 @@ public class MineRequest implements Serializable {
 
     public String getGerritURL() {
         return gerritURL;
+    }
+    
+    public String getGerritProject() {
+        return gerritProject;
     }
 
     public Long getStartGerritID() {

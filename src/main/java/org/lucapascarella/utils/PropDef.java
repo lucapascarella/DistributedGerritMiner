@@ -33,6 +33,7 @@ public final class PropDef {
 
     // Gerrit settings
     public static String defaultGerritURL[] = { "gerrit.url", "https://codereview.qt-project.org" };
+    public static String defaultGerritProject[] = { "gerrit.project", "*" };
     public static String defaultGerritStartID[] = { "gerrit.start", "1" };
     public static String defaultGerritStopID[] = { "gerrit.stop", "1000" };
     public static String defaultRequestsPerWorker[] = { "gerrit.requests", "5" };
