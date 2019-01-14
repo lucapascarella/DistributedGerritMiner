@@ -1,4 +1,4 @@
-package org.lucapscarella.JMSAPI;
+package org.lucapascarella.JMSAPI;
 
 import java.io.Serializable;
 

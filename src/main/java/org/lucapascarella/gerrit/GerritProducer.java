@@ -15,12 +15,12 @@ import org.lucapascarella.beans.MyFile;
 import org.lucapascarella.beans.MyMessage;
 import org.lucapascarella.beans.MyReview;
 import org.lucapascarella.beans.MyRevision;
+import org.lucapascarella.JMSAPI.ProducerImpl;
 import org.lucapascarella.beans.MineRequest;
 import org.lucapascarella.beans.MinedResults;
 import org.lucapascarella.db.MySQL;
 import org.lucapascarella.utils.Config;
 import org.lucapascarella.utils.PropDef;
-import org.lucapscarella.JMSAPI.ProducerImpl;
 
 public class GerritProducer extends ProducerImpl {
 

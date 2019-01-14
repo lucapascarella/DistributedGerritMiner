@@ -6,10 +6,11 @@ import javax.jms.JMSException;
 import javax.jms.Message;
 import javax.jms.ObjectMessage;
 import javax.jms.TextMessage;
+
+import org.lucapascarella.JMSAPI.ConsumerImpl;
 import org.lucapascarella.beans.MineRequest;
 import org.lucapascarella.beans.MinedResults;
 import org.lucapascarella.db.MySQL;
-import org.lucapscarella.JMSAPI.ConsumerImpl;
 
 public class GerritConsumer extends ConsumerImpl {
 

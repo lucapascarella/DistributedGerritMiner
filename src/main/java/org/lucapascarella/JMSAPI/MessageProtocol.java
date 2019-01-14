@@ -1,4 +1,4 @@
-package org.lucapscarella.JMSAPI;
+package org.lucapascarella.JMSAPI;
 
 public class MessageProtocol {
     public String handleProtocolMessage(String messageText) {
